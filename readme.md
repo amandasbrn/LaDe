@@ -2,7 +2,7 @@
 
 ![image](./img/logo.png)
 Data Link: [LaDe-P](https://huggingface.co/datasets/Cainiao-AI/LaDe-P) and [LaDe-D](https://huggingface.co/datasets/Cainiao-AI/LaDe-D)  
-Paper Link: https://arxiv.org/abs/2306.10675
+Paper Link: [https://dl.acm.org/doi/10.1145/3637528.3671548](https://dl.acm.org/doi/10.1145/3637528.3671548)
 ## 1 Abstract
 Real-world last-mile delivery datasets are crucial for research in logistics, supply chain management, and spatio-temporal data mining. 
 Despite a plethora of algorithms developed to date, no widely accepted, publicly available last-mile delivery dataset exists to support research in this field. 
@@ -49,6 +49,7 @@ Each sub-dataset contains 5 csv files, with each representing the data from a sp
 
 ## 3 Data Description
 Below is the detailed field of each sub-dataset.
+Time Range: 2022-05-01 ~ 2022-10-31
 ### 3.1 LaDe-P
 ![image](./img/datafeild_LaDe-P.png)
 
@@ -72,12 +73,11 @@ For the detailed running instructions of each task, plese see the corresponding 
 ## Cite
 If you find this helpful, please cite our paper:
 ```shell
-@misc{wu2023lade,
-      title={LaDe: The First Comprehensive Last-mile Delivery Dataset from Industry}, 
-      author={Lixia Wu and Haomin Wen and Haoyuan Hu and Xiaowei Mao and Yutong Xia and Ergang Shan and Jianbin Zhen and Junhong Lou and Yuxuan Liang and Liuqing Yang and Roger Zimmermann and Youfang Lin and Huaiyu Wan},
-      year={2023},
-      eprint={2306.10675},
-      archivePrefix={arXiv},
-      primaryClass={cs.DB}
-} 
+@inproceedings{wu2024lade,
+  title={LaDe: The First Comprehensive Last-mile Express Dataset from Industry},
+  author={Wu, Lixia and Wen, Haomin and Hu, Haoyuan and Mao, Xiaowei and Xia, Yutong and Shan, Ergang and Zheng, Jianbin and Lou, Junhong and Liang, Yuxuan and Yang, Liuqing and others},
+  booktitle={Proceedings of the 30th ACM SIGKDD Conference on Knowledge Discovery and Data Mining},
+  pages={5991--6002},
+  year={2024}
+}
 ```
