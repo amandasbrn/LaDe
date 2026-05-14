@@ -5,7 +5,7 @@ from geopy.distance import geodesic
 import os
 
 ###### the dataset ########
-raw_data_path = './data/pickup_sh.csv'
+raw_data_path = '/data/pickup_sh.csv'
 city_name = 'Shanghai'
 abb = 'SH'
 saved_dir = './data/sensor_graph/'

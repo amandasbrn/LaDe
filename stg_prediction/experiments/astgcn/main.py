@@ -141,7 +141,7 @@ def main():
     if not os.path.exists(result_path):
         os.makedirs(result_path)
 
-    trainer = GWNET_Trainer(model=model,
+    trainer = ASTGCN_Trainer(model=model,
                             adj_mat=adj_mat,
                             filter_type=args.filter_type,
                             data=data,

@@ -7,3 +7,9 @@ torchaudio==0.10.2
 torchvision==0.11.3
 scipy==1.7.3
 matplotlib==3.5.2
+pyyaml==6.0.3
+geopy==2.4.1
+
+# PyTorch Geometric is required by stg_prediction/src and must match your torch/CUDA version
+# Install it with the appropriate wheel from https://data.pyg.org/whl/
+torch-geometric

@@ -20,4 +20,7 @@ class ASTGCN_Trainer(BaseTrainer):
     def __init__(self, **args):
         super(ASTGCN_Trainer, self).__init__(**args)
         self._optimizer = Adam(self.model.parameters(), self._base_lr)
-        self._supports = []
+
+    def _calculate_supports(self, adj_mat, filter_type):
+        # ASTGCN uses adaptive spatial attention instead of static supports.
+        return []
