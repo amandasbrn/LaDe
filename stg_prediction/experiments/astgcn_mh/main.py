@@ -72,7 +72,7 @@ def get_config():
     parser.add_argument('--filter_type', type=str, default='doubletransition')
     parser.add_argument('--n_blocks', type=int, default=2)
     parser.add_argument('--n_hidden', type=int, default=32)
-    parser.add_argument('--num_heads', type=int, default=4, help='number of heads in spatial attention')
+    parser.add_argument('--num_heads', type=int, default=2, help='number of heads in spatial attention')
     parser.add_argument('--K', type=int, default=3)
 
     parser.add_argument('--seed', type=int, default=0)
@@ -93,7 +93,8 @@ def get_config():
     else:
         args.support_len = 2
 
-    args.datapath = os.path.join('./data', args.dataset)
+    args.datapath = os.path.join('./data/', args.dataset)
+    #args.datapath = './data/Delivery_SH_72'
     args.graph_pkl = 'data/sensor_graph/adj_mx_{}.pkl'.format(args.dataset.lower())
     if args.seed != 0:
         torch.manual_seed(args.seed)
@@ -161,6 +162,8 @@ def main():
                             device=device,
                             result_path=result_path,                     
                             model_name=args.model_name,
+                            num_heads=args.num_heads,
+                            horizon=args.horizon,
                             null_value =args.null_value)
 
     if args.mode == 'train':

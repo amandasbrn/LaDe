@@ -41,6 +41,8 @@ class BaseTrainer():
             model_name: str = None,
             result_path: str = None,
             hp: str = None,
+            num_heads: int = 1,
+            horizon: int = 24,
             null_value: float = 0.0,
     ):
         super().__init__()
@@ -97,7 +99,9 @@ class BaseTrainer():
         self._supports = None
         self.model_name = model_name
         self.hp = hp
+        self.num_heads = num_heads
         self.null_value = null_value
+        self.horizon_log = horizon
         
         if aug > 0:
             self._sampler = RandomSampler(adj_mat, filter_type)
@@ -352,13 +356,13 @@ class BaseTrainer():
  
         csv_path  = self.result_path + '/{}.csv'.format(self.model_name)
         if not os.path.exists(csv_path):
-            df = pd.DataFrame(columns = ['hp','end_time','time',
-                                            'mae','rmse'])
+            df = pd.DataFrame(columns = ['hp', 'horizon', 'num_heads', 'end_time', 'time',
+                                            'mae', 'rmse'])
             df.to_csv(csv_path, index = False)
             
         with open(csv_path,'a+') as f:
             csv_write = csv.writer(f)
-            data_row = [self.hp, time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime()), round(end_time - start_time, 2),
+            data_row = [self.hp, self.horizon_log, self.num_heads, time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime()), round(end_time - start_time, 2),
                         np.mean(amae), np.mean(armse)]
             csv_write.writerow(data_row)
             

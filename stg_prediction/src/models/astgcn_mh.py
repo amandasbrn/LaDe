@@ -288,7 +288,7 @@ class ASTGCN_block(nn.Module):
         self.TAt = Temporal_Attention_layer(
             DEVICE, in_channels, num_of_vertices, num_of_timesteps)
         self.SAt = Multi_Head_Spatial_Attention_layer(
-            DEVICE, in_channels, num_of_vertices, num_of_timesteps, num_heads=4)
+            DEVICE, in_channels, num_of_vertices, num_of_timesteps, num_heads=num_heads)
         self.cheb_conv_SAt = cheb_conv_withSAt(
             K, cheb_polynomials, in_channels, nb_chev_filter)
         self.time_conv = nn.Conv2d(nb_chev_filter, nb_time_filter, kernel_size=(
