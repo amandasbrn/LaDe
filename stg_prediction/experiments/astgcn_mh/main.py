@@ -72,7 +72,7 @@ def get_config():
     parser.add_argument('--filter_type', type=str, default='doubletransition')
     parser.add_argument('--n_blocks', type=int, default=2)
     parser.add_argument('--n_hidden', type=int, default=32)
-    parser.add_argument('--num_heads', type=int, default=6, help='number of heads in spatial attention')
+    parser.add_argument('--num_heads', type=int, default=2, help='number of heads in spatial attention')
     parser.add_argument('--K', type=int, default=3)
 
     parser.add_argument('--seed', type=int, default=42)
