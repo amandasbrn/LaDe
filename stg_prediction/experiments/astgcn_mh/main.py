@@ -74,7 +74,7 @@ def get_config():
     parser.add_argument('--n_hidden', type=int, default=32)
     parser.add_argument('--num_heads', type=int, default=2, help='number of heads in spatial attention')
     parser.add_argument('--K', type=int, default=3)
-
+    parser.add_argument('--fusion_type', type=str, default='weighted_sum')
     parser.add_argument('--seed', type=int, default=42)
     args = parser.parse_args()
     args.steps = [12000]
@@ -135,6 +135,7 @@ def main():
                    horizon=args.horizon,
                    input_dim=args.input_dim,
                    output_dim=args.output_dim,
+                   fusion_type=args.fusion_type,
                    num_heads=args.num_heads)
 
     for p in model.parameters():

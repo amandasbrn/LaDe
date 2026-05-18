@@ -20418,3 +20418,15 @@
 2026-05-17 23:39:12,253 - src.base.trainer - INFO - epoch complete
 2026-05-17 23:39:12,253 - src.base.trainer - INFO - evaluating now!
 2026-05-17 23:39:12,968 - src.base.trainer - INFO - Epoch [249/250] (39750) train_mae: 2.3079, val_mae: 2.8375, lr: 0.000100, 6.9s
+2026-05-18 12:56:00,871 - src.base.trainer - INFO - the number of parameters: 46667
+2026-05-18 12:56:00,871 - src.base.trainer - INFO - start training !!!!!
+2026-05-18 13:04:48,429 - src.base.trainer - INFO - the number of parameters: 46667
+2026-05-18 13:04:48,430 - src.base.trainer - INFO - start training !!!!!
+2026-05-18 13:04:53,996 - src.base.trainer - INFO - epoch complete
+2026-05-18 13:04:53,996 - src.base.trainer - INFO - evaluating now!
+2026-05-18 13:04:54,647 - src.base.trainer - INFO - Epoch [0/250] (159) train_mae: 10.5509, val_mae: 10.1196, lr: 0.000100, 5.6s
+2026-05-18 13:04:54,654 - src.base.trainer - INFO - Val loss decrease from inf to 10.1196, saving to True
+2026-05-18 13:05:00,169 - src.base.trainer - INFO - epoch complete
+2026-05-18 13:05:00,172 - src.base.trainer - INFO - evaluating now!
+2026-05-18 13:05:00,767 - src.base.trainer - INFO - Epoch [1/250] (318) train_mae: 6.3474, val_mae: 6.9070, lr: 0.000100, 5.5s
+2026-05-18 13:05:00,769 - src.base.trainer - INFO - Val loss decrease from 10.1196 to 6.9070, saving to True

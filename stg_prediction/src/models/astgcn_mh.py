@@ -70,9 +70,11 @@ class Multi_Head_Spatial_Attention_layer(nn.Module):
     Each head learns a different (N, N) relationship map.
     They are averaged at the end → still outputs (B, N, N).
     '''
-    def __init__(self, DEVICE, in_channels, num_of_vertices, num_of_timesteps, num_heads=4):
+    def __init__(self, DEVICE, in_channels, num_of_vertices, num_of_timesteps, fusion_type, num_heads=4):
         super(Multi_Head_Spatial_Attention_layer, self).__init__()
         self.num_heads = num_heads
+        self.fusion_type = fusion_type
+        self.head_weights = nn.Parameter(torch.ones(num_heads)) # one scalar per head (ex. num_heads = 4 -> scalar (4,))
 
         # Each head gets its OWN set of W1, W2, W3, bs, Vs parameters.
         # Think of it as num_heads separate students, each with their own worksheet.
@@ -127,7 +129,15 @@ class Multi_Head_Spatial_Attention_layer(nn.Module):
         # Then average across the H dimension → (B, N, N)
         # This is the "merge" step — combine all heads into one map
         all_heads = torch.stack(head_outputs, dim=1)  # (B, H, N, N)
-        merged = all_heads.mean(dim=1)                # (B, N, N)
+        weights = F.softmax(self.head_weights, dim=0)
+        H = weights.shape[0]
+        weights_reshaped = weights.view(1, H, 1, 1)
+        weighted_heads = all_heads * weights_reshaped
+
+        if self.fusion_type == 'mean':
+            merged = all_heads.mean(dim=1)                # (B, N, N)
+        else:
+            merged = weighted_heads.sum(dim=1)
 
         return merged
 
@@ -347,12 +357,12 @@ class cheb_conv(nn.Module):
 
 
 class ASTGCN_block(nn.Module):
-    def __init__(self, DEVICE, in_channels, K, nb_chev_filter, nb_time_filter, time_strides, cheb_polynomials, num_of_vertices, num_of_timesteps, num_heads=4):
+    def __init__(self, DEVICE, in_channels, K, nb_chev_filter, nb_time_filter, time_strides, cheb_polynomials, num_of_vertices, num_of_timesteps, fusion_type, num_heads=4):
         super(ASTGCN_block, self).__init__()
         self.TAt = Temporal_Attention_layer(
-            DEVICE, in_channels, num_of_vertices, num_of_timesteps, num_heads=num_heads)
+            DEVICE, in_channels, num_of_vertices, num_of_timesteps)
         self.SAt = Multi_Head_Spatial_Attention_layer(
-            DEVICE, in_channels, num_of_vertices, num_of_timesteps, num_heads=num_heads)
+            DEVICE, in_channels, num_of_vertices, num_of_timesteps, fusion_type, num_heads=num_heads)
         # self.SAt = Spatial_Attention_layer(
         #     DEVICE, in_channels, num_of_vertices, num_of_timesteps)
         self.cheb_conv_SAt = cheb_conv_withSAt(
@@ -415,6 +425,7 @@ class ASTGCN_MH(BaseModel):
                  nb_time_filter,
                  time_strides,
                  cheb_polynomials,
+                 fusion_type,
                  num_heads=4,
                  **args):
         '''
@@ -429,7 +440,7 @@ class ASTGCN_MH(BaseModel):
         '''
         super(ASTGCN_MH, self).__init__(**args)
         # self.embedding_air=AirEmbedding()
-        self.BlockList = nn.ModuleList([ASTGCN_block(self.device, self.input_dim, K, nb_chev_filter, nb_time_filter, time_strides, cheb_polynomials, self.num_nodes, self.seq_len, num_heads)])
+        self.BlockList = nn.ModuleList([ASTGCN_block(self.device, self.input_dim, K, nb_chev_filter, nb_time_filter, time_strides, cheb_polynomials, self.num_nodes, self.seq_len, fusion_type, num_heads)])
 
         self.BlockList.extend([ASTGCN_block(
             self.device, nb_time_filter, K, nb_chev_filter, nb_time_filter,
