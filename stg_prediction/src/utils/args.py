@@ -32,7 +32,7 @@ def get_public_config():
     parser.add_argument('--save_iter', type=int, default=400)
     parser.add_argument('--max_grad_norm', type=float, default=5.0)
     parser.add_argument('--patience', type=int, default=10)
-    parser.add_argument('--base_lr', type=float, default=1e-3)
+    parser.add_argument('--base_lr', type=float, default=1e-5)
     parser.add_argument('--lr_decay_ratio', type=float, default=0.7)
     # test
     parser.add_argument('--save_preds', type=bool, default=False)

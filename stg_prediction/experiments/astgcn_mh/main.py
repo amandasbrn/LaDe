@@ -12,7 +12,7 @@ import torch.nn as nn
 import torch
 from src.trainers.astgcn_trainer import ASTGCN_Trainer
 
-from src.utils.helper import get_dataloader, check_device, get_num_nodes, get_null_value
+from src.utils.helper import get_dataloader, check_device, get_num_nodes, get_null_value, setup_seed
 from src.utils.metrics import masked_mae
 from src.models.astgcn import ASTGCN
 from src.models.astgcn_mh import ASTGCN_MH
@@ -72,10 +72,10 @@ def get_config():
     parser.add_argument('--filter_type', type=str, default='doubletransition')
     parser.add_argument('--n_blocks', type=int, default=2)
     parser.add_argument('--n_hidden', type=int, default=32)
-    parser.add_argument('--num_heads', type=int, default=2, help='number of heads in spatial attention')
+    parser.add_argument('--num_heads', type=int, default=6, help='number of heads in spatial attention')
     parser.add_argument('--K', type=int, default=3)
 
-    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--seed', type=int, default=42)
     args = parser.parse_args()
     args.steps = [12000]
     print(args)
@@ -96,8 +96,6 @@ def get_config():
     args.datapath = os.path.join('./data/', args.dataset)
     #args.datapath = './data/Delivery_SH_72'
     args.graph_pkl = 'data/sensor_graph/adj_mx_{}.pkl'.format(args.dataset.lower())
-    if args.seed != 0:
-        torch.manual_seed(args.seed)
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
     return args
 
@@ -105,6 +103,15 @@ def get_config():
 def main():
 
     args = get_config()
+    if args.seed != 0:
+        setup_seed(args.seed)
+        if torch.cuda.is_available():
+            torch.backends.cudnn.deterministic = True
+            torch.backends.cudnn.benchmark = False
+        try:
+            torch.use_deterministic_algorithms(True)
+        except Exception:
+            pass
     device = check_device()
     _, _, adj_mat = load_graph_data(args.graph_pkl)
 
@@ -164,6 +171,7 @@ def main():
                             model_name=args.model_name,
                             num_heads=args.num_heads,
                             horizon=args.horizon,
+                            learning_rate = args.base_lr,
                             null_value =args.null_value)
 
     if args.mode == 'train':

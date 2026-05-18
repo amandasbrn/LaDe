@@ -64,72 +64,72 @@ class Spatial_Attention_layer(nn.Module):
 
         return S_normalized
 
-class Multi_Head_Spatial_Attention_layer(nn.Module):
-    '''
-    Multi-head spatial attention.
-    Each head learns a different (N, N) relationship map.
-    They are averaged at the end → still outputs (B, N, N).
-    '''
-    def __init__(self, DEVICE, in_channels, num_of_vertices, num_of_timesteps, num_heads=4):
-        super(Multi_Head_Spatial_Attention_layer, self).__init__()
-        self.num_heads = num_heads
+# class Multi_Head_Spatial_Attention_layer(nn.Module):
+#     '''
+#     Multi-head spatial attention.
+#     Each head learns a different (N, N) relationship map.
+#     They are averaged at the end → still outputs (B, N, N).
+#     '''
+#     def __init__(self, DEVICE, in_channels, num_of_vertices, num_of_timesteps, num_heads=4):
+#         super(Multi_Head_Spatial_Attention_layer, self).__init__()
+#         self.num_heads = num_heads
 
-        # Each head gets its OWN set of W1, W2, W3, bs, Vs parameters.
-        # Think of it as num_heads separate students, each with their own worksheet.
-        self.W1 = nn.ParameterList([
-            nn.Parameter(torch.FloatTensor(num_of_timesteps).to(DEVICE))
-            for _ in range(num_heads)
-        ])
-        self.W2 = nn.ParameterList([
-            nn.Parameter(torch.FloatTensor(in_channels, num_of_timesteps).to(DEVICE))
-            for _ in range(num_heads)
-        ])
-        self.W3 = nn.ParameterList([
-            nn.Parameter(torch.FloatTensor(in_channels).to(DEVICE))
-            for _ in range(num_heads)
-        ])
-        self.bs = nn.ParameterList([
-            nn.Parameter(torch.FloatTensor(1, num_of_vertices, num_of_vertices).to(DEVICE))
-            for _ in range(num_heads)
-        ])
-        self.Vs = nn.ParameterList([
-            nn.Parameter(torch.FloatTensor(num_of_vertices, num_of_vertices).to(DEVICE))
-            for _ in range(num_heads)
-        ])
+#         # Each head gets its OWN set of W1, W2, W3, bs, Vs parameters.
+#         # Think of it as num_heads separate students, each with their own worksheet.
+#         self.W1 = nn.ParameterList([
+#             nn.Parameter(torch.FloatTensor(num_of_timesteps).to(DEVICE))
+#             for _ in range(num_heads)
+#         ])
+#         self.W2 = nn.ParameterList([
+#             nn.Parameter(torch.FloatTensor(in_channels, num_of_timesteps).to(DEVICE))
+#             for _ in range(num_heads)
+#         ])
+#         self.W3 = nn.ParameterList([
+#             nn.Parameter(torch.FloatTensor(in_channels).to(DEVICE))
+#             for _ in range(num_heads)
+#         ])
+#         self.bs = nn.ParameterList([
+#             nn.Parameter(torch.FloatTensor(1, num_of_vertices, num_of_vertices).to(DEVICE))
+#             for _ in range(num_heads)
+#         ])
+#         self.Vs = nn.ParameterList([
+#             nn.Parameter(torch.FloatTensor(num_of_vertices, num_of_vertices).to(DEVICE))
+#             for _ in range(num_heads)
+#         ])
 
-    def forward(self, x):
-        '''
-        :param x: (B, N, F, T)
-        :return:  (B, N, N)   ← same shape as before, drop-in replacement
-        '''
-        head_outputs = []
+#     def forward(self, x):
+#         '''
+#         :param x: (B, N, F, T)
+#         :return:  (B, N, N)   ← same shape as before, drop-in replacement
+#         '''
+#         head_outputs = []
 
-        for h in range(self.num_heads):
-            # ---- exact same math as the original Spatial_Attention_layer ----
-            # Step 1: (B,N,F,T) x (T,) → (B,N,F)  then x (F,T) → (B,N,T)
-            lhs = torch.matmul(torch.matmul(x, self.W1[h]), self.W2[h])
+#         for h in range(self.num_heads):
+#             # ---- exact same math as the original Spatial_Attention_layer ----
+#             # Step 1: (B,N,F,T) x (T,) → (B,N,F)  then x (F,T) → (B,N,T)
+#             lhs = torch.matmul(torch.matmul(x, self.W1[h]), self.W2[h])
 
-            # Step 2: (F,) x (B,N,F,T) → (B,N,T) → (B,T,N)
-            rhs = torch.matmul(self.W3[h], x).transpose(-1, -2)
+#             # Step 2: (F,) x (B,N,F,T) → (B,N,T) → (B,T,N)
+#             rhs = torch.matmul(self.W3[h], x).transpose(-1, -2)
 
-            # Step 3: (B,N,T) x (B,T,N) → (B,N,N)
-            product = torch.matmul(lhs, rhs)
+#             # Step 3: (B,N,T) x (B,T,N) → (B,N,N)
+#             product = torch.matmul(lhs, rhs)
 
-            # Step 4: sigmoid + bias + Vs weighting → (B,N,N)
-            S = torch.matmul(self.Vs[h], torch.sigmoid(product + self.bs[h]))
+#             # Step 4: sigmoid + bias + Vs weighting → (B,N,N)
+#             S = torch.matmul(self.Vs[h], torch.sigmoid(product + self.bs[h]))
 
-            # Step 5: softmax → attention weights that sum to 1
-            S_normalized = F.softmax(S, dim=1)
+#             # Step 5: softmax → attention weights that sum to 1
+#             S_normalized = F.softmax(S, dim=1)
 
-            head_outputs.append(S_normalized)  # each is (B, N, N)
+#             head_outputs.append(S_normalized)  # each is (B, N, N)
 
-        # Stack all heads: list of H tensors (B,N,N) → (B, H, N, N)
-        # Then average across the H dimension → (B, N, N)
-        # This is the "merge" step — combine all heads into one map
-        all_heads = torch.stack(head_outputs, dim=1)  # (B, H, N, N)
-        merged = all_heads.mean(dim=1)                # (B, N, N)
+#         # Stack all heads: list of H tensors (B,N,N) → (B, H, N, N)
+#         # Then average across the H dimension → (B, N, N)
+#         # This is the "merge" step — combine all heads into one map
+#         all_heads = torch.stack(head_outputs, dim=1)  # (B, H, N, N)
+#         merged = all_heads.mean(dim=1)                # (B, N, N)
 
-        return merged
+#         return merged
 
 
 class cheb_conv_withSAt(nn.Module):
@@ -191,41 +191,105 @@ class cheb_conv_withSAt(nn.Module):
         return F.relu(torch.cat(outputs, dim=-1))  # (b, N, F_out, T)
 
 
-class Temporal_Attention_layer(nn.Module):
-    def __init__(self, DEVICE, in_channels, num_of_vertices, num_of_timesteps):
-        super(Temporal_Attention_layer, self).__init__()
-        self.U1 = nn.Parameter(torch.FloatTensor(num_of_vertices).to(DEVICE))
-        self.U2 = nn.Parameter(torch.FloatTensor(
-            in_channels, num_of_vertices).to(DEVICE))
-        self.U3 = nn.Parameter(torch.FloatTensor(in_channels).to(DEVICE))
-        self.be = nn.Parameter(torch.FloatTensor(
-            1, num_of_timesteps, num_of_timesteps).to(DEVICE))
-        self.Ve = nn.Parameter(torch.FloatTensor(
-            num_of_timesteps, num_of_timesteps).to(DEVICE))
+# class Temporal_Attention_layer(nn.Module):
+#     def __init__(self, DEVICE, in_channels, num_of_vertices, num_of_timesteps):
+#         super(Temporal_Attention_layer, self).__init__()
+#         self.U1 = nn.Parameter(torch.FloatTensor(num_of_vertices).to(DEVICE))
+#         self.U2 = nn.Parameter(torch.FloatTensor(
+#             in_channels, num_of_vertices).to(DEVICE))
+#         self.U3 = nn.Parameter(torch.FloatTensor(in_channels).to(DEVICE))
+#         self.be = nn.Parameter(torch.FloatTensor(
+#             1, num_of_timesteps, num_of_timesteps).to(DEVICE))
+#         self.Ve = nn.Parameter(torch.FloatTensor(
+#             num_of_timesteps, num_of_timesteps).to(DEVICE))
+
+#     def forward(self, x):
+#         '''
+#         :param x: (batch_size, N, F_in, T)
+#         :return: (B, T, T)
+#         '''
+#         _, num_of_vertices, num_of_features, num_of_timesteps = x.shape
+
+#         lhs = torch.matmul(torch.matmul(
+#             x.permute(0, 3, 2, 1), self.U1), self.U2)
+#         # x:(B, N, F_in, T) -> (B, T, F_in, N)
+#         # (B, T, F_in, N)(N) -> (B,T,F_in)
+#         # (B,T,F_in)(F_in,N)->(B,T,N)
+
+#         rhs = torch.matmul(self.U3, x)  # (F)(B,N,F,T)->(B, N, T)
+
+#         product = torch.matmul(lhs, rhs)  # (B,T,N)(B,N,T)->(B,T,T)
+
+#         E = torch.matmul(self.Ve, torch.sigmoid(
+#             product + self.be))  # (B, T, T)
+
+#         E_normalized = F.softmax(E, dim=1)
+
+#         return E_normalized
+
+class Multi_Head_Temporal_Attention_layer(nn.Module):
+    '''
+    Multi-head temporal attention.
+    Each head learns a different (T, T) time relationship map.
+    Averaged at the end → still outputs (B, T, T).
+    Drop-in replacement for Temporal_Attention_layer.
+    '''
+    def __init__(self, DEVICE, in_channels, num_of_vertices, num_of_timesteps, num_heads=4):
+        super(Multi_Head_Temporal_Attention_layer, self).__init__()
+        self.num_heads = num_heads
+
+        # each head gets its own set of parameters
+        # same as spatial — num_heads separate students, each with own worksheet
+        self.U1 = nn.ParameterList([
+            nn.Parameter(torch.FloatTensor(num_of_vertices).to(DEVICE))
+            for _ in range(num_heads)
+        ])
+        self.U2 = nn.ParameterList([
+            nn.Parameter(torch.FloatTensor(in_channels, num_of_vertices).to(DEVICE))
+            for _ in range(num_heads)
+        ])
+        self.U3 = nn.ParameterList([
+            nn.Parameter(torch.FloatTensor(in_channels).to(DEVICE))
+            for _ in range(num_heads)
+        ])
+        self.be = nn.ParameterList([
+            nn.Parameter(torch.FloatTensor(1, num_of_timesteps, num_of_timesteps).to(DEVICE))
+            for _ in range(num_heads)
+        ])
+        self.Ve = nn.ParameterList([
+            nn.Parameter(torch.FloatTensor(num_of_timesteps, num_of_timesteps).to(DEVICE))
+            for _ in range(num_heads)
+        ])
 
     def forward(self, x):
         '''
-        :param x: (batch_size, N, F_in, T)
-        :return: (B, T, T)
+        :param x: (B, N, F, T)
+        :return:  (B, T, T)  ← same shape as before, drop-in replacement
         '''
-        _, num_of_vertices, num_of_features, num_of_timesteps = x.shape
+        head_outputs = []
 
-        lhs = torch.matmul(torch.matmul(
-            x.permute(0, 3, 2, 1), self.U1), self.U2)
-        # x:(B, N, F_in, T) -> (B, T, F_in, N)
-        # (B, T, F_in, N)(N) -> (B,T,F_in)
-        # (B,T,F_in)(F_in,N)->(B,T,N)
+        for h in range(self.num_heads):
+            # exact same math as original Temporal_Attention_layer
+            lhs = torch.matmul(torch.matmul(
+                x.permute(0, 3, 2, 1), self.U1[h]), self.U2[h])
+            # (B,T,F,N)(N) -> (B,T,F) -> (B,T,N)
 
-        rhs = torch.matmul(self.U3, x)  # (F)(B,N,F,T)->(B, N, T)
+            rhs = torch.matmul(self.U3[h], x)  # (B,N,T)
 
-        product = torch.matmul(lhs, rhs)  # (B,T,N)(B,N,T)->(B,T,T)
+            product = torch.matmul(lhs, rhs)    # (B,T,T)
 
-        E = torch.matmul(self.Ve, torch.sigmoid(
-            product + self.be))  # (B, T, T)
+            E = torch.matmul(self.Ve[h], torch.sigmoid(
+                product + self.be[h]))           # (B,T,T)
 
-        E_normalized = F.softmax(E, dim=1)
+            E_normalized = F.softmax(E, dim=1)
 
-        return E_normalized
+            head_outputs.append(E_normalized)   # each is (B, T, T)
+
+        # stack → (B, H, T, T) then average → (B, T, T)
+        all_heads = torch.stack(head_outputs, dim=1)
+        merged = all_heads.mean(dim=1)
+
+        return merged
 
 
 class cheb_conv(nn.Module):
@@ -285,10 +349,12 @@ class cheb_conv(nn.Module):
 class ASTGCN_block(nn.Module):
     def __init__(self, DEVICE, in_channels, K, nb_chev_filter, nb_time_filter, time_strides, cheb_polynomials, num_of_vertices, num_of_timesteps, num_heads=4):
         super(ASTGCN_block, self).__init__()
-        self.TAt = Temporal_Attention_layer(
-            DEVICE, in_channels, num_of_vertices, num_of_timesteps)
-        self.SAt = Multi_Head_Spatial_Attention_layer(
+        self.TAt = Multi_Head_Temporal_Attention_layer(
             DEVICE, in_channels, num_of_vertices, num_of_timesteps, num_heads=num_heads)
+        # self.SAt = Multi_Head_Spatial_Attention_layer(
+        #     DEVICE, in_channels, num_of_vertices, num_of_timesteps, num_heads=num_heads)
+        self.SAt = Spatial_Attention_layer(
+            DEVICE, in_channels, num_of_vertices, num_of_timesteps)
         self.cheb_conv_SAt = cheb_conv_withSAt(
             K, cheb_polynomials, in_channels, nb_chev_filter)
         self.time_conv = nn.Conv2d(nb_chev_filter, nb_time_filter, kernel_size=(
