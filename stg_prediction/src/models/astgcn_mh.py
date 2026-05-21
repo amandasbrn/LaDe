@@ -64,20 +64,227 @@ different heads capture heterogeneous urban demand interactions
 
 #         return S_normalized
 
-class Multi_Head_Spatial_Attention_layer(nn.Module):
-    '''
-    Multi-head spatial attention.
-    Each head learns a different (N, N) relationship map.
-    They are averaged at the end → still outputs (B, N, N).
-    '''
-    def __init__(self, DEVICE, in_channels, num_of_vertices, num_of_timesteps, fusion_type, num_heads=4):
-        super(Multi_Head_Spatial_Attention_layer, self).__init__()
+class MultiHeadVs(nn.Module):
+    def __init__(self, num_heads, num_of_vertices, rank):
+        super().__init__()
         self.num_heads = num_heads
-        self.fusion_type = fusion_type
-        self.head_weights = nn.Parameter(torch.ones(num_heads)) # one scalar per head (ex. num_heads = 4 -> scalar (4,))
+        self.num_of_vertices = num_of_vertices
+        self.rank = rank
 
-        # Each head gets its OWN set of W1, W2, W3, bs, Vs parameters.
-        # Think of it as num_heads separate students, each with their own worksheet.
+        # [H, N, r]
+        self.Vs_left = nn.Parameter(
+            torch.empty(num_heads, num_of_vertices, rank)
+        )
+
+        # [H, N, r]
+        self.Vs_right = nn.Parameter(
+            torch.empty(num_heads, num_of_vertices, rank)
+        )
+
+        nn.init.xavier_uniform_(self.Vs_left)
+        nn.init.xavier_uniform_(self.Vs_right)
+
+    def forward(self):
+        # [H, N, r] @ [H, r, N] -> [H, N, N]
+        Vs = torch.matmul(self.Vs_left, self.Vs_right.transpose(-1, -2))
+        return Vs
+
+# class Multi_Head_Spatial_Attention_layer(nn.Module):
+#     '''
+#     Multi-head spatial attention.
+#     Each head learns a different (N, N) relationship map.
+#     They are averaged at the end → still outputs (B, N, N).
+#     '''
+#     def __init__(self, DEVICE, in_channels, num_of_vertices, num_of_timesteps, fusion_type, num_heads=4):
+#         super(Multi_Head_Spatial_Attention_layer, self).__init__()
+#         self.num_heads = num_heads
+#         self.fusion_type = fusion_type
+#         self.head_weights = nn.Parameter(torch.ones(num_heads)) # one scalar per head (ex. num_heads = 4 -> scalar (4,))
+
+#         # Each head gets its OWN set of W1, W2, W3, bs, Vs parameters.
+#         # Think of it as num_heads separate students, each with their own worksheet.
+#         self.W1 = nn.ParameterList([
+#             nn.Parameter(torch.FloatTensor(num_of_timesteps).to(DEVICE))
+#             for _ in range(num_heads)
+#         ])
+#         self.W2 = nn.ParameterList([
+#             nn.Parameter(torch.FloatTensor(in_channels, num_of_timesteps).to(DEVICE))
+#             for _ in range(num_heads)
+#         ])
+#         self.W3 = nn.ParameterList([
+#             nn.Parameter(torch.FloatTensor(in_channels).to(DEVICE))
+#             for _ in range(num_heads)
+#         ])
+#         self.bs = nn.ParameterList([
+#             nn.Parameter(torch.FloatTensor(1, num_of_vertices, num_of_vertices).to(DEVICE))
+#             for _ in range(num_heads)
+#         ])
+#         self.Vs = nn.ParameterList([
+#             nn.Parameter(torch.FloatTensor(num_of_vertices, num_of_vertices).to(DEVICE))
+#             for _ in range(num_heads)
+#         ])
+
+#     def forward(self, x):
+#         '''
+#         :param x: (B, N, F, T)
+#         :return:  (B, N, N)   ← same shape as before, drop-in replacement
+#         '''
+#         head_outputs = []
+
+#         for h in range(self.num_heads):
+#             # ---- exact same math as the original Spatial_Attention_layer ----
+#             # Step 1: (B,N,F,T) x (T,) → (B,N,F)  then x (F,T) → (B,N,T)
+#             lhs = torch.matmul(torch.matmul(x, self.W1[h]), self.W2[h])
+
+#             # Step 2: (F,) x (B,N,F,T) → (B,N,T) → (B,T,N)
+#             rhs = torch.matmul(self.W3[h], x).transpose(-1, -2)
+
+#             # Step 3: (B,N,T) x (B,T,N) → (B,N,N)
+#             product = torch.matmul(lhs, rhs)
+
+#             # Step 4: sigmoid + bias + Vs weighting → (B,N,N)
+#             S = torch.matmul(self.Vs[h], torch.sigmoid(product + self.bs[h]))
+
+#             # Step 5: softmax → attention weights that sum to 1
+#             S_normalized = F.softmax(S, dim=1)
+
+#             head_outputs.append(S_normalized)  # each is (B, N, N)
+
+#         # Stack all heads: list of H tensors (B,N,N) → (B, H, N, N)
+#         # Then average across the H dimension → (B, N, N)
+#         # This is the "merge" step — combine all heads into one map
+#         all_heads = torch.stack(head_outputs, dim=1)  # (B, H, N, N)
+#         weights = F.softmax(self.head_weights, dim=0)
+#         H = weights.shape[0]
+
+#         weights_reshaped = weights.view(1, H, 1, 1)
+#         weighted_heads = all_heads * weights_reshaped
+
+#         if self.fusion_type == 'mean':
+#             merged = all_heads.mean(dim=1)                # (B, N, N)
+#         else:
+#             merged = weighted_heads.sum(dim=1)
+
+#         return merged
+
+
+# class Multi_Head_Spatial_Attention_layer(nn.Module):
+#     def __init__(
+#         self,
+#         DEVICE,
+#         in_channels,
+#         num_of_vertices,
+#         num_of_timesteps,
+#         fusion_type='weighted_sum',
+#         rank=8,
+#         num_heads=4
+#     ):
+#         super().__init__()
+
+#         self.DEVICE = DEVICE
+#         self.num_heads = num_heads
+#         self.fusion_type = fusion_type
+#         self.in_channels = in_channels
+#         self.num_of_vertices = num_of_vertices
+#         self.num_of_timesteps = num_of_timesteps
+
+#         # Shared across heads
+#         self.W1 = nn.Parameter(torch.empty(num_of_timesteps, device=DEVICE))             # [T]
+#         self.W3 = nn.Parameter(torch.empty(in_channels, device=DEVICE))                  # [F]
+#         self.bs = nn.Parameter(torch.empty(1, num_of_vertices, num_of_vertices, device=DEVICE))  # [1,N,N]
+
+#         # Head-specific W2
+#         # [H, F, T]
+#         self.W2 = nn.Parameter(
+#             torch.empty(num_heads, in_channels, num_of_timesteps, device=DEVICE)
+#         )
+
+#         # Head-specific factorized Vs
+#         self.Vs_factorized = MultiHeadVs(
+#             num_heads=num_heads,
+#             num_of_vertices=num_of_vertices,
+#             rank=rank
+#         ).to(DEVICE)
+
+#         # Fusion weights if using weighted fusion
+#         self.head_weights = nn.Parameter(torch.ones(num_heads, device=DEVICE))
+
+#         self.reset_parameters()
+
+#     def reset_parameters(self):
+#         nn.init.uniform_(self.W1, -0.1, 0.1)
+#         nn.init.uniform_(self.W3, -0.1, 0.1)
+#         nn.init.zeros_(self.bs)
+#         nn.init.xavier_uniform_(self.W2)
+#         nn.init.ones_(self.head_weights)
+
+#     def forward(self, x):
+#         """
+#         x: (B, N, F, T)
+#         return: (B, N, N)
+#         """
+#         B, N, F_in, T = x.shape
+#         assert N == self.num_of_vertices
+#         assert F_in == self.in_channels
+#         assert T == self.num_of_timesteps
+
+#         # Shared computation
+#         # (B,N,F,T) @ (T,) -> (B,N,F)
+#         lhs_shared = torch.matmul(x, self.W1)  # [B, N, F]
+
+#         # (F,) @ (B,N,F,T) -> (B,N,T), then transpose -> (B,T,N)
+#         rhs_shared = torch.matmul(self.W3, x).transpose(-1, -2)  # [B, T, N]
+
+#         # [H, N, N]
+#         Vs = self.Vs_factorized()
+
+#         head_outputs = []
+
+#         for h in range(self.num_heads):
+#             # (B,N,F) @ (F,T) -> (B,N,T)
+#             lhs = torch.matmul(lhs_shared, self.W2[h])  # [B, N, T]
+
+#             # (B,N,T) @ (B,T,N) -> (B,N,N)
+#             product = torch.matmul(lhs, rhs_shared)  # [B, N, N]
+
+#             # Head-specific Vs: (N,N) @ (B,N,N) -> need batch broadcast
+#             # expand Vs[h] to (B,N,N)
+#             Vs_h = Vs[h].unsqueeze(0).expand(B, -1, -1)  # [B, N, N]
+
+#             # elementwise relation scoring, then batch matmul
+#             score_input = torch.sigmoid(product + self.bs)  # [B, N, N]
+#             S = torch.bmm(Vs_h, score_input)  # [B, N, N]
+
+#             # normalize over the last dimension (neighbors j)
+#             S_normalized = F.softmax(S, dim=-1)  # [B, N, N]
+
+#             head_outputs.append(S_normalized)
+
+#         # [B, H, N, N]
+#         all_heads = torch.stack(head_outputs, dim=1)
+
+#         if self.fusion_type == "mean":
+#             merged = all_heads.mean(dim=1)  # [B, N, N]
+#         #elif self.fusion_type == "weighted_sum":
+#         else:
+#             weights = F.softmax(self.head_weights, dim=0)  # [H]
+#             merged = (all_heads * weights.view(1, -1, 1, 1)).sum(dim=1)  # [B,N,N]
+#         # else:
+#         #     raise ValueError("fusion_type must be either 'mean' or 'weighted_sum'")
+
+#         return merged
+
+class Multi_Head_Spatial_Attention_layer(nn.Module):
+    def __init__(self, DEVICE, in_channels, num_of_vertices, num_of_timesteps,
+                 fusion_type, num_heads=4, rank=8):
+        super(Multi_Head_Spatial_Attention_layer, self).__init__()
+        self.num_heads   = num_heads
+        self.fusion_type = fusion_type
+
+        # learned scalar per head for weighted fusion
+        self.head_weights = nn.Parameter(torch.ones(num_heads))
+
+        # ── all separate per head ────────────────────────────────
         self.W1 = nn.ParameterList([
             nn.Parameter(torch.FloatTensor(num_of_timesteps).to(DEVICE))
             for _ in range(num_heads)
@@ -94,21 +301,25 @@ class Multi_Head_Spatial_Attention_layer(nn.Module):
             nn.Parameter(torch.FloatTensor(1, num_of_vertices, num_of_vertices).to(DEVICE))
             for _ in range(num_heads)
         ])
-        self.Vs = nn.ParameterList([
-            nn.Parameter(torch.FloatTensor(num_of_vertices, num_of_vertices).to(DEVICE))
-            for _ in range(num_heads)
-        ])
+
+        # ── factorised Vs — replaces the old Vs ParameterList ────
+        # MultiHeadVs holds all H heads internally as (H, N, r)
+        # calling .forward() returns (H, N, N) — one matrix per head
+        self.Vs = MultiHeadVs(num_heads, num_of_vertices, rank)
 
     def forward(self, x):
         '''
         :param x: (B, N, F, T)
-        :return:  (B, N, N)   ← same shape as before, drop-in replacement
+        :return:  (B, N, N)
         '''
-        head_outputs = []
+        # build all H factorised Vs matrices in one shot → (H, N, N)
+        # done ONCE outside the loop, reused per head
+        all_Vs = self.Vs()  # (H, N, N)
 
+        head_outputs = []
         for h in range(self.num_heads):
-            # ---- exact same math as the original Spatial_Attention_layer ----
-            # Step 1: (B,N,F,T) x (T,) → (B,N,F)  then x (F,T) → (B,N,T)
+
+            # Step 1: (B,N,F,T) x (T,) → (B,N,F) then x (F,T) → (B,N,T)
             lhs = torch.matmul(torch.matmul(x, self.W1[h]), self.W2[h])
 
             # Step 2: (F,) x (B,N,F,T) → (B,N,T) → (B,T,N)
@@ -117,30 +328,24 @@ class Multi_Head_Spatial_Attention_layer(nn.Module):
             # Step 3: (B,N,T) x (B,T,N) → (B,N,N)
             product = torch.matmul(lhs, rhs)
 
-            # Step 4: sigmoid + bias + Vs weighting → (B,N,N)
-            S = torch.matmul(self.Vs[h], torch.sigmoid(product + self.bs[h]))
+            # Step 4: pull this head's (N,N) slice from the factorised stack
+            Vs_h = all_Vs[h]  # (N, N)
+            S = torch.matmul(Vs_h, torch.sigmoid(product + self.bs[h]))
 
-            # Step 5: softmax → attention weights that sum to 1
+            # Step 5: softmax → (B, N, N)
             S_normalized = F.softmax(S, dim=1)
+            head_outputs.append(S_normalized)
 
-            head_outputs.append(S_normalized)  # each is (B, N, N)
-
-        # Stack all heads: list of H tensors (B,N,N) → (B, H, N, N)
-        # Then average across the H dimension → (B, N, N)
-        # This is the "merge" step — combine all heads into one map
+        # ── merge ─────────────────────────────────────────────────
         all_heads = torch.stack(head_outputs, dim=1)  # (B, H, N, N)
-        weights = F.softmax(self.head_weights, dim=0)
-        H = weights.shape[0]
-        weights_reshaped = weights.view(1, H, 1, 1)
-        weighted_heads = all_heads * weights_reshaped
+        weights   = F.softmax(self.head_weights, dim=0)
 
         if self.fusion_type == 'mean':
-            merged = all_heads.mean(dim=1)                # (B, N, N)
+            merged = all_heads.mean(dim=1)
         else:
-            merged = weighted_heads.sum(dim=1)
+            merged = (all_heads * weights.view(1, -1, 1, 1)).sum(dim=1)
 
-        return merged
-
+        return merged   # (B, N, N)
 
 class cheb_conv_withSAt(nn.Module):
     '''
@@ -357,12 +562,12 @@ class cheb_conv(nn.Module):
 
 
 class ASTGCN_block(nn.Module):
-    def __init__(self, DEVICE, in_channels, K, nb_chev_filter, nb_time_filter, time_strides, cheb_polynomials, num_of_vertices, num_of_timesteps, fusion_type, num_heads=4):
+    def __init__(self, DEVICE, in_channels, K, nb_chev_filter, nb_time_filter, time_strides, cheb_polynomials, num_of_vertices, num_of_timesteps, fusion_type, rank=8, num_heads=4):
         super(ASTGCN_block, self).__init__()
         self.TAt = Temporal_Attention_layer(
             DEVICE, in_channels, num_of_vertices, num_of_timesteps)
         self.SAt = Multi_Head_Spatial_Attention_layer(
-            DEVICE, in_channels, num_of_vertices, num_of_timesteps, fusion_type, num_heads=num_heads)
+            DEVICE, in_channels, num_of_vertices, num_of_timesteps, fusion_type, rank=8, num_heads=num_heads)
         # self.SAt = Spatial_Attention_layer(
         #     DEVICE, in_channels, num_of_vertices, num_of_timesteps)
         self.cheb_conv_SAt = cheb_conv_withSAt(

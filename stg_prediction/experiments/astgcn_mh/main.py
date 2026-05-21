@@ -72,10 +72,12 @@ def get_config():
     parser.add_argument('--filter_type', type=str, default='doubletransition')
     parser.add_argument('--n_blocks', type=int, default=2)
     parser.add_argument('--n_hidden', type=int, default=32)
-    parser.add_argument('--num_heads', type=int, default=2, help='number of heads in spatial attention')
+    parser.add_argument('--num_heads', type=int, default=4, help='number of heads in spatial attention')
     parser.add_argument('--K', type=int, default=3)
+    parser.add_argument('--rank', type=int, default=16,
+                    help='factorisation rank for Vs — smaller = fewer parameters')
     parser.add_argument('--fusion_type', type=str, default='weighted_sum')
-    parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--seed', type=int, default=1, help='1-2-3 seed')
     args = parser.parse_args()
     args.steps = [12000]
     print(args)
@@ -86,7 +88,7 @@ def get_config():
                                              args.model_name,
                                              folder_name)
     args.num_nodes = get_num_nodes(args.dataset)
-    args.null_value = get_null_value(args.dataset)    
+    args.null_value = get_null_value(args.dataset)
 
     if args.filter_type in ['scalap', 'identity']:
         args.support_len = 1
@@ -173,7 +175,9 @@ def main():
                             num_heads=args.num_heads,
                             horizon=args.horizon,
                             learning_rate = args.base_lr,
-                            null_value =args.null_value)
+                            null_value =args.null_value,
+                            fusion_type=args.fusion_type,
+                            seed=args.seed)
 
     if args.mode == 'train':
         trainer.train()

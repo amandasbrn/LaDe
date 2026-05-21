@@ -10,6 +10,7 @@ from torch.optim.optimizer import Optimizer
 from torch.optim.lr_scheduler import MultiStepLR
 from torch.utils.data import DataLoader, TensorDataset
 from torch.optim import RMSprop
+from torch.optim import Adam
 
 from src.utils.logging import get_logger
 from src.base.trainer import BaseTrainer
@@ -17,14 +18,15 @@ from src.utils import graph_algo
 from src.utils.metrics import masked_rmse
 
 
-class STGCN_Trainer(BaseTrainer):
+class STGCNMHSA_Trainer(BaseTrainer):
     def __init__(self, **args):
-        super(STGCN_Trainer, self).__init__(**args)
-        # self._optimizer = RMSprop(self.model.parameters(), base_lr)
+        super(STGCNMHSA_Trainer, self).__init__(**args)
+        # self._optimizer = RMSprop(self.model.parameters(), self._base_lr)
         # self._lr_scheduler = MultiStepLR(self.optimizer,
-        #                                  steps,
-        #                                  gamma=lr_decay_ratio)
+        #                                  self._steps,
+        #                                  gamma=self._lr_decay_ratio)
         # self._loss_fn = masked_rmse
+        self._optimizer = Adam(self.model.parameters(), self._base_lr)
         self._supports = self._calculate_supports(args['adj_mat'], args['filter_type'])
         
     def _calculate_supports(self, adj_mat, filter_type):

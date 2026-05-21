@@ -33,6 +33,8 @@ class BaseTrainer():
             lr_decay_ratio,
             log_dir: str,
             n_exp: int,
+            seed: int,
+            fusion_type: str,
             save_iter: int = 300,
             clip_grad_value: Optional[float] = None,
             max_epochs: Optional[int] = 1000,
@@ -103,8 +105,10 @@ class BaseTrainer():
         self.num_heads = num_heads
         self.null_value = null_value
         self.horizon_log = horizon
-        self.learning_rate = learning_rate
+        self.learning_rate = learning_rate if learning_rate != 0.0 else base_lr
         self.patience_log = patience
+        self.seed = seed
+        self.fusion_type = fusion_type
         
         if aug > 0:
             self._sampler = RandomSampler(adj_mat, filter_type)
@@ -360,13 +364,13 @@ class BaseTrainer():
         csv_path  = self.result_path + '/{}.csv'.format(self.model_name)
         if not os.path.exists(csv_path):
             df = pd.DataFrame(columns = ['hp', 'num_heads', 'horizon', 'end_time', 'time',
-                                            'mae', 'rmse','learning_rate','patience'])
+                                            'mae', 'rmse','learning_rate','patience','seed', 'fusion_type'])
             df.to_csv(csv_path, index = False)
             
         with open(csv_path,'a+') as f:
             csv_write = csv.writer(f)
             data_row = [self.hp, self.num_heads, self.horizon_log, time.strftime("%Y-%m-%d-%H:%M:%S", time.localtime()), round(end_time - start_time, 2),
-                        np.mean(amae), np.mean(armse), self.learning_rate, self.patience_log]
+                        np.mean(amae), np.mean(armse), self.learning_rate, self.patience_log, self.seed, self.fusion_type]
             csv_write.writerow(data_row)
             
         return np.mean(amae)
